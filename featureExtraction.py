@@ -79,16 +79,12 @@ def add_action_thisweek(act, columns, lines, act_handles, week_index, stop, firs
     return df
 
 def combine_by_timerange_pandas(dname = 'r4.2'):
-
-    
     allacts =  ['device','email','file', 'http','logon']
     firstline = str(subprocess.check_output(['head', '-2', 'http.csv'])).split('\\n')[1]
     firstdate = time_convert(firstline.split(',')[1],'t2dt')
     firstdate = firstdate - timedelta(int(firstdate.strftime("%w")))
     firstdate = time_convert(firstdate, 'dt2date')
-    
     week_index = 0
-    
     act_handles = {}
     lines = {}
     stop = {}
@@ -237,8 +233,13 @@ def get_mal_userdata(data = 'r4.2', usersdf = None):
         usersdf.loc[listmaluser['user'][i], 'mstart'] = listmaluser['start'][i]
         usersdf.loc[listmaluser['user'][i], 'mend'] = listmaluser['end'][i]
         usersdf.loc[listmaluser['user'][i], 'malscene'] = listmaluser['scenario'][i]
-        malacts = open(f"answers/r{listmaluser['dataset'][i]}-{listmaluser['scenario'][i]}/"+
+        
+        if data in ['r4.2', 'r5.2']:
+            malacts = open(f"answers/r{listmaluser['dataset'][i]}-{listmaluser['scenario'][i]}/"+
                        listmaluser['details'][i],'r').read().strip().split("\n")
+        else: #only 1 malicious user, no folder
+            malacts = open("answers/"+ listmaluser['details'][i],'r').read().strip().split("\n")
+        
         malacts = [x.split(',') for x in malacts]
 
         mal_users = np.array([x[3].strip('"') for x in malacts])
@@ -423,11 +424,9 @@ def process_week_num(week, userlist = 'all', data = 'r4.2',users = None):
     if users is None:
         users = get_mal_userdata(data)
     user_dict = {idx: i for (i, idx) in enumerate(users.index)}        
-    
     acts_week = pd.read_pickle("DataByWeek/"+str(week)+".pickle")
     start_week, end_week = min(acts_week.date), max(acts_week.date)
     acts_week.sort_values('date', ascending = True, inplace = True)
-    
     n_cols = 45 if data in ['r5.2','r5.1'] else 46
     if data in ['r4.2','r4.1']: n_cols = 27
     u_week = np.zeros((len(acts_week), n_cols))
@@ -445,7 +444,6 @@ def process_week_num(week, userlist = 'all', data = 'r4.2',users = None):
                 mal_u = users.loc[u].malscene
         
         list_uacts = df_acts_u.type.tolist() #all user's activities       
-        
         list_activity = df_acts_u.activity.tolist()
         list_uacts = [list_activity[i].strip().lower() if (type(list_activity[i])==str and list_activity[i].strip() in ['Logon', 'Logoff', 'Connect', 'Disconnect']) \
                         else list_uacts[i] for i in range(len(list_uacts))]  
@@ -813,7 +811,6 @@ def session_instance_calc(ud, sinfo, week, mode, data, uw, v, list_uf):
     return (session_instance, tmp[3])
 
 def to_csv(week, mode, data, ul, uf_dict, list_uf, subsession_mode = {}):
-    
     user_dict = {i : idx for (i, idx) in enumerate(ul.index)} 
     if mode == 'session': 
         first_sid = week*100000 # to get an unique index for each session, also, first 1 or 2 number in index would be week number
