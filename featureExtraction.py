@@ -220,6 +220,8 @@ def get_mal_userdata(data = 'r4.2', usersdf = None):
     listmaluser = pd.read_csv("answers/insiders.csv")
     listmaluser['dataset'] = listmaluser['dataset'].apply(lambda x: str(x))
     listmaluser = listmaluser[listmaluser['dataset']==data.replace("r","")]
+    #for r6.2, new time in scenario 4 answer is incomplete.
+    if data == 'r6.2': listmaluser.at[listmaluser['scenario']==4,'start'] = '02'+listmaluser[listmaluser['scenario']==4]['start']
     listmaluser[['start','end']] = listmaluser[['start','end']].applymap(lambda x: datetime.strptime(x, "%m/%d/%Y %H:%M:%S"))
     
     if type(usersdf) != pd.core.frame.DataFrame:
