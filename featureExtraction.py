@@ -411,10 +411,8 @@ def from_pc(act, ul):
     else:
         return (2, act_pc)
     
-def process_week_num(week, userlist = 'all', data = 'r4.2',users = None):
+def process_week_num(week, users, userlist = 'all', data = 'r4.2'):
 
-    if users is None:
-        users = get_mal_userdata(data)
     user_dict = {idx: i for (i, idx) in enumerate(users.index)}        
     acts_week = pd.read_pickle("DataByWeek/"+str(week)+".pickle")
     start_week, end_week = min(acts_week.date), max(acts_week.date)
@@ -594,20 +592,14 @@ def get_u_features_dicts(ul, data = 'r5.2'):
         ufdict[f] = {idx:i for i, idx in enumerate(tmp)}
     return (ul,ufdict, list_uf)
 
-def proc_u_features(uf, ufdict, mode = 'num', list_f = None, data = 'r4.2'): #to remove mode
+def proc_u_features(uf, ufdict, list_f = None, data = 'r4.2'): #to remove mode
     if type(list_f) != list:
         list_f=[] if data in ['r4.1','r4.2'] else ['project']
         list_f = ['role','b_unit','f_unit', 'dept','team'] + list_f
-    if mode == 'binary':
-        out = []
-        for f in list_f:    
-            tmp = [0] * len(ufdict[f])
-            tmp[ufdict[f][uf[f]]] = 1
-            out += tmp
-    elif mode == 'num':
-        out = []
-        for f in list_f:
-            out.append(ufdict[f][uf[f]])
+
+    out = []
+    for f in list_f:
+        out.append(ufdict[f][uf[f]])
     return out
 
 def f_stats_calc(ud, fn, stats_f, countonly_f = {}, get_stats = False):
@@ -825,7 +817,7 @@ def to_csv(week, mode, data, ul, uf_dict, list_uf, subsession_mode = {}):
         for v in user_dict:
             if v in usnlist:
                 is_ITAdmin = 1 if ul.loc[user_dict[v], 'role'] == 'ITAdmin' else 0
-                row = [week] + proc_u_features(ul.loc[user_dict[v]], uf_dict, 'num', list_uf, data = data) + [is_ITAdmin] + \
+                row = [week] + proc_u_features(ul.loc[user_dict[v]], uf_dict, list_uf, data = data) + [is_ITAdmin] + \
                     (ul.loc[user_dict[v],['O','C','E','A','N']]).tolist() + [0]
                 row[-1] = int(list(set(w[w['user']==v]['insider']))[0])
                 uwdict[v] = row
@@ -952,7 +944,7 @@ if __name__ == "__main__":
     st = time.time()
     
     #### Step 3: Convert each action to numerical data, stored in NumDataByWeek
-    Parallel(n_jobs=numCores)(delayed(process_week_num)(i,users=users, data=dname) for i in range(numWeek))
+    Parallel(n_jobs=numCores)(delayed(process_week_num)(i, users, data=dname) for i in range(numWeek))
     print(f"Step 3 - Convert each action to numerical data - done. Time (mins): {(time.time()-st)/60:.2f}")
     st = time.time()
     
