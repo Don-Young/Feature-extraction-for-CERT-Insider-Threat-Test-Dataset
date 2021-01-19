@@ -155,16 +155,6 @@ def getuserlist(dname = 'r4.2', psycho = True):
             employeesThisMonth.append(af[i][1])
             if af[i][1] not in alluser:
                 alluser[af[i][1]] = af[i][0:1].tolist() + af[i][2:].tolist() + [file.split('.')[0] , np.nan]
-            else:
-                if  (af[i][5] != alluser[af[i][1]][4]):
-                    if np.isnan(af[i][5]) and not np.isnan(alluser[af[i][1]][4]):
-                        print("changes!!! "+ str(af[i][5]) + " " + str(alluser[af[i][1]][4]))
-                if  (af[i][6] != alluser[af[i][1]][5]):
-                    if np.isnan(af[i][6]) and not np.isnan(alluser[af[i][1]][5]):
-                        print("changes!!! "+ str(af[i][6]) + " " + str(alluser[af[i][1]][5]))       
-                if  (af[i][7] != alluser[af[i][1]][6]):
-                    if np.isnan(af[i][7]) and not np.isnan(alluser[af[i][1]][6]):
-                        print("changes!!! "+ str(af[i][7]) + " " + str(alluser[af[i][1]][6]))   
 
         firedEmployees = list(set(alluser.keys()) - set(alreadyFired) - set(employeesThisMonth))
         alreadyFired = alreadyFired + firedEmployees
