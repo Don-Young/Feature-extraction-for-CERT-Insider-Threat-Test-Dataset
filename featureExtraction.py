@@ -55,6 +55,19 @@ def time_convert(inp, mode, real_sd = '2010-01-02', sd_monday= "2009-12-28"):
         return startday+timedelta(weeks = inp)
     
 def add_action_thisweek(act, columns, lines, act_handles, week_index, stop, firstdate, dname = 'r5.2'):
+     '''
+    acquire the week data format (dataframe)
+    columns: [raw]-'id'+'type'     index : id
+    :param act:  log type  such as device, file            type:str
+    :param columns: dataframe columns name   (depend on the log type and dataset verison)        type:list
+    :param lines:  line data of one type log      type:dict
+    :param act_handles:   iter of log file     used to input the log line data   type:dict
+    :param week_index:    this is week_index  a part of outfile name   type: int
+    :param stop:     flag  used to indicate whether file is read end    type:list   len=5
+    :param firstdate: start date  format(Y-M-D)  type: str
+    :param dname:  dataset version name   type:str
+    :return: week data data  type:dataframe
+    '''
     thisweek_act = []
     while True:
         if not lines[act]: 
@@ -79,6 +92,12 @@ def add_action_thisweek(act, columns, lines, act_handles, week_index, stop, firs
     return df
 
 def combine_by_timerange_pandas(dname = 'r4.2'):
+    '''
+    generate week data (include: device,file,logon,email,http)  mixed in a dataframe    saved as pickle format per week
+    dataframe columns: date,user,pc,content,activity,type,to,cc,bcc,from,size,att,url/fname     index: id
+    :param dname: dataset name
+    :return:   pickle file recoarding week data
+    '''
     allacts =  ['device','email','file', 'http','logon']
     firstline = str(subprocess.check_output(['head', '-2', 'http.csv'])).split('\\n')[1]
     firstdate = time_convert(firstline.split(',')[1],'t2dt')
@@ -125,6 +144,13 @@ def combine_by_timerange_pandas(dname = 'r4.2'):
 ##############################################################################
 
 def process_user_pc(upd, roles): #figure out  which PC belongs to which user
+    '''
+     generate the pc information for every user     pc information: sharedpc  pc  npc  pcs
+     user_data information format:
+    :param upd: user_pc_dict  type:dataframe columns = 'col'
+    :param roles: roles
+    :return:  dataframe  (rows = user_num)
+    '''
     upd['sharedpc'] = None
     upd['npc'] = upd['pcs'].apply(lambda x: len(x))
     upd.at[upd['npc']==1,'pc'] = upd[upd['npc']==1]['pcs'].apply(lambda x: x[0])
@@ -144,6 +170,12 @@ def process_user_pc(upd, roles): #figure out  which PC belongs to which user
     return upd
 
 def getuserlist(dname = 'r4.2', psycho = True):
+     '''
+    generate all the users' information
+    :param dname: dataset version name
+    :param psycho:  if uses the psycho data
+    :return:  dataframe data (rows = user_num)
+    '''
     allfiles =  ['LDAP/'+f1 for f1 in os.listdir('LDAP') if os.path.isfile('LDAP/'+f1)]
     alluser = {}
     alreadyFired = []
@@ -202,6 +234,14 @@ def getuserlist(dname = 'r4.2', psycho = True):
 
         
 def get_mal_userdata(data = 'r4.2', usersdf = None):
+    '''
+    generate user information for every user   includes: malicious act information and label
+    dataframe columns:
+    :param data: dataset version name
+    :param usersdf:  user information dataframe
+    :return: userdf      type:dataframe   columns:uname,email,role,project,b_unit,f_unit,dept,team,sup,wstart,wend,O,C,E,A,N,pc,sharedpc,malscene,mstart,mend,malacts
+                                          index = userid
+    '''
     
     if not os.path.isdir('answers'):
         os.system('wget https://kilthub.cmu.edu/ndownloader/files/24857828 -O answers.tar.bz2')
@@ -347,6 +387,14 @@ def http_process(act, data = 'r4.2'):
         return [r, url_len, url_depth, content_len, content_nwords]
         
 def file_process(act, complete_ul = None, data = 'r4.2', filetype = 'act'):
+    '''
+
+    :param act: one row of user_week_data
+    :param complete_ul:
+    :param data:
+    :param filetype:
+    :return: [filetype,content lengeth,word_num,disk,filedepth,activity,to_usb,from_usb]
+    '''
     if filetype == 'act':
         ftype = act['url/fname'].split(".")[1]
         disk = 1 if act['url/fname'][0] == 'C' else 0
@@ -399,6 +447,12 @@ def file_process(act, complete_ul = None, data = 'r4.2', filetype = 'act'):
         return [r, fsize, f_nwords, disk, file_depth]
 
 def from_pc(act, ul):
+     '''
+
+    :param act: one rows in dataframe
+    :param ul:  users dataframe information
+    :return:
+    '''
     #code: 0,1,2,3:  own pc, sharedpc, other's pc, supervisor's pc
     user_pc = ul.loc[act['user']]['pc']
     act_pc = act['pc']
@@ -486,8 +540,6 @@ def process_week_num(week, users, userlist = 'all', data = 'r4.2'):
                 if len(disconnect_acts) > 0:
                     distime = disconnect_acts.iloc[0]['date']
                     if len(connect_acts) > 0 and connect_acts.iloc[0]['date'] < distime:
-                        connect_dur = -1
-                    else:
                         tmp_td = distime - df_acts_u.iloc[i]['date']
                         connect_dur = tmp_td.days*24*3600 + tmp_td.seconds
                 else:
@@ -593,6 +645,16 @@ def get_u_features_dicts(ul, data = 'r5.2'):
     return (ul,ufdict, list_uf)
 
 def proc_u_features(uf, ufdict, list_f = None, data = 'r4.2'): #to remove mode
+    '''
+    acquire personal organizational information by list format
+           ul.loc[user_dict[v]], uf_dict, 'num', list_uf, data=data
+    :param uf:  one user information   users.iloc['username']
+    :param ufdict:   map relationship
+    :param mode:
+    :param list_f:   col information     the user's organizaional information   ['project','role','b_unit','f_unit','dept','team']
+    :param data:  dataset version name
+    :return:  list   binary: [0,0,1,0,0,...1,0]     num:[2,4,6,1,4,6]
+    '''
     if type(list_f) != list:
         list_f=[] if data in ['r4.1','r4.2'] else ['project']
         list_f = ['role','b_unit','f_unit', 'dept','team'] + list_f
@@ -603,6 +665,15 @@ def proc_u_features(uf, ufdict, list_f = None, data = 'r4.2'): #to remove mode
     return out
 
 def f_stats_calc(ud, fn, stats_f, countonly_f = {}, get_stats = False):
+    '''
+           ud, 'allact', [], all_countonlyf
+    :param ud:
+    :param fn:    'allact'
+    :param stats_f:
+    :param countonly_f:
+    :param get_stats:
+    :return:  f_count: data rows     r: num of event in different pc [own,share,other,super]     f_names:[allact_n-pc0,allact_n-pc1,allact_n-pc2,allact_n-pc3]
+    '''
     f_count = len(ud)
     r = []
     f_names = []
@@ -795,6 +866,17 @@ def session_instance_calc(ud, sinfo, week, mode, data, uw, v, list_uf):
     return (session_instance, tmp[3])
 
 def to_csv(week, mode, data, ul, uf_dict, list_uf, subsession_mode = {}):
+    '''
+
+    :param week:
+    :param mode: granularity  such as session, day, week
+    :param data: dataset version name
+    :param ul:  user dataframe information  index: userid
+    :param uf_dict:  {'project':{'project 115':0,'project 116':1},'role':{'Accountant': 0,'AdministrativeAssistant': 1}}
+    :param list_uf:  type:list   such as  ['project', 'role', 'b_unit', 'f_unit', 'dept', 'team']
+    :param subsession_mode:    subsession_mode = {'nact': [25, 50], 'time': [120, 240]}  or {}
+    :return:
+    '''
     user_dict = {i : idx for (i, idx) in enumerate(ul.index)} 
     if mode == 'session': 
         first_sid = week*100000 # to get an unique index for each session, also, first 1 or 2 number in index would be week number
@@ -940,6 +1022,8 @@ if __name__ == "__main__":
     
     #### Step 2: Get user list
     users = get_mal_userdata(dname)
+    users.loc[:,['sup','sharedpc']]=users[['sup','sharedpc']].where(users[['sup','sharedpc']].notnull(), None)
+    users.to_pickle("users_information.pickle")
     print(f"Step 2 - Get user list - done. Time (mins): {(time.time()-st)/60:.2f}")
     st = time.time()
     
